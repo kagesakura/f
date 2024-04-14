@@ -78,7 +78,7 @@
 
         const audio = new Audio();
         document.body.append(audio);
-        audio.volume = 0.035;
+        audio.controls = true;
 
         let isStopRequested = false;
         input.addEventListener("input", async e => {
@@ -109,9 +109,8 @@
             if (audioSrc !== audio.src) return;
             isStopRequested = false;
             audio.play();
-            const startTime = Date.now();
             while (!isStopRequested) {
-              const t = ((Date.now() - startTime) / audioStepSize * 44.1) >>> 0;
+              const t = ((audio.duration - startTime) / audioStepSize * 44100) >>> 0;
               if (t >= stftMagnitudesLog.length) break;
               drawFFTOnCanvas(canvas, stftMagnitudesLog[t], maxValue, minValue);
               await new Promise(requestAnimationFrame);

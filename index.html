@@ -95,26 +95,30 @@
         }();
 
         input.addEventListener("input", async e => {
-          if (!input.files.length) return;
-          loadingText.textContent = "Loading the data...";
-          const data = await getRawDataOfMusic(await input.files[0].arrayBuffer());
-          loadingText.textContent = "Analysing the data...";
-          stftMagnitudesLog = await fft(data);
-          maxValue = -Infinity, minValue = +Infinity;
-          for (let t = 0; t < stftMagnitudesLog.length; t++)
-          for (let f = 0; f < stftMagnitudesLog[0].length; f++) {
-            maxValue = Math.max(stftMagnitudesLog[t][f], maxValue);
-            minValue = Math.min(stftMagnitudesLog[t][f], minValue);
+          try {
+            if (!input.files.length) return;
+            loadingText.textContent = "Loading the data...";
+            const data = await getRawDataOfMusic(await input.files[0].arrayBuffer());
+            loadingText.textContent = "Analysing the data...";
+            stftMagnitudesLog = await fft(data);
+            maxValue = -Infinity, minValue = +Infinity;
+            for (let t = 0; t < stftMagnitudesLog.length; t++)
+            for (let f = 0; f < stftMagnitudesLog[0].length; f++) {
+              maxValue = Math.max(stftMagnitudesLog[t][f], maxValue);
+              minValue = Math.min(stftMagnitudesLog[t][f], minValue);
+            }
+            loadingText.textContent = "Ready. Play the music.";
+            try { URL.revokeObjectURL(audio.src); }
+            catch(_) {}
+            const audioSrc = audio.src = URL.createObjectURL(input.files[0]);
+            const ctx = canvas.getContext("2d");
+            canvas.width = stftMagnitudesLog[0].length;
+            canvas.height = 255;
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.width, 255);
+          } catch(e) {
+            alert(e);
           }
-          loadingText.textContent = "Ready. Play the music.";
-          try { URL.revokeObjectURL(audio.src); }
-          catch(_) {}
-          const audioSrc = audio.src = URL.createObjectURL(input.files[0]);
-          const ctx = canvas.getContext("2d");
-          canvas.width = stftMagnitudesLog[0].length;
-          canvas.height = 255;
-          ctx.fillStyle = "black";
-          ctx.fillRect(0, 0, canvas.width, 255);
         });
       }();
     } while(0);

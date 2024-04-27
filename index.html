@@ -9,7 +9,8 @@
   <body style="background-color: gray;">
     <script type="text/javascript">
     do {
-      const audioStepSize = 128;
+      const audioStepSize = 256;
+      const sampleRate = 16384;
 
       const fft = (() => {
         const fftWorker = new Worker("./worker.js");
@@ -30,7 +31,7 @@
       })();
 
       async function getRawDataOfMusic(data) {
-        const audioContext = new AudioContext({ sampleRate: 44100 });
+        const audioContext = new AudioContext({ sampleRate });
         const audioBuffer = await audioContext.decodeAudioData(data);
         return Array.from({ length: audioBuffer.numberOfChannels }, (_, i) => audioBuffer.getChannelData(i));
       }
@@ -85,7 +86,7 @@
 
         ~async function drawingLoop() {
           for (;;) {
-            const t = (audio.currentTime / audioStepSize * 44100) >>> 0;
+            const t = (audio.currentTime / audioStepSize * sampleRate) >>> 0;
             if (!audio.paused && t < stftMagnitudesLog.length) {
               drawFFTOnCanvas(canvas, stftMagnitudesLog[t], maxValue, minValue);
             }

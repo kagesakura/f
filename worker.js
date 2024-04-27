@@ -21,11 +21,9 @@ const promiseOfFFT = pffft_simd().then(Module => (audioBuffer, audioStepSize) =>
   for(let audioSampleIndex = 0; audioSampleIndex < audioSamples.length - audioBlockSize; audioSampleIndex += audioStepSize){
     const audioBlock = audioSamples.slice(audioSampleIndex, audioSampleIndex + audioBlockSize);
     dataHeap.set(new Uint8Array(audioBlock.buffer));
-    Module._pffft_runner_transform(pffftRunner, dataHeap.byteOffset);
-    const fftResult = new Float32Array(dataHeap.buffer, dataHeap.byteOffset, audioBlock.length);
-    const magnitudes = new Float32Array(audioBlockSize / 2);
-    for (let i = 0; i < audioBlockSize; i += 2)
-      magnitudes[i / 2] = Math.log((fftResult[i] ** 2 + fftResult[i + 1] ** 2) + 0.03);
+    Module._pffft_runner_transform_magnitudes(pffftRunner, dataHeap.byteOffset);
+    const fftResult = new Float32Array(dataHeap.buffer, dataHeap.byteOffset, audioBlockSize / 2);
+    const magnitudes = fftResult.map(v => Math.log(v + 0.03));
     stftMagnitudes.push(magnitudes);
   }
   Module._free(dataPtr);

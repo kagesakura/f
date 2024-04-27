@@ -9,13 +9,10 @@
   <body style="background-color: gray;">
     <script type="text/javascript">
     do {
-      const audioStepSize = 256;
-      const sampleRate = 16384;
-
       const fft = (() => {
         const fftWorker = new Worker("./worker.js");
         let count = 0;
-        return data => {
+        return (audioStepSize, data) => {
           const myId = count++;
           fftWorker.postMessage({ id: myId, audioStepSize, data });
           return new Promise(r => {
@@ -30,7 +27,7 @@
         };
       })();
 
-      async function getRawDataOfMusic(data) {
+      async function getRawDataOfMusic(sampleRate, data) {
         const audioContext = new AudioContext({ sampleRate });
         const audioBuffer = await audioContext.decodeAudioData(data);
         return Array.from({ length: audioBuffer.numberOfChannels }, (_, i) => audioBuffer.getChannelData(i));
@@ -62,6 +59,9 @@
       }
 
       ~async function main() {
+        const sampleRate = 16384;
+        const audioStepSize = 256;
+
         await windowLoadingPromise;
 
         const input = document.createElement("input");
@@ -95,30 +95,26 @@
         }();
 
         input.addEventListener("input", async e => {
-          try {
-            if (!input.files.length) return;
-            loadingText.textContent = "Loading the data...";
-            const data = await getRawDataOfMusic(await input.files[0].arrayBuffer());
-            loadingText.textContent = "Analysing the data...";
-            stftMagnitudesLog = await fft(data);
-            maxValue = -Infinity, minValue = +Infinity;
-            for (let t = 0; t < stftMagnitudesLog.length; t++)
-            for (let f = 0; f < stftMagnitudesLog[0].length; f++) {
-              maxValue = Math.max(stftMagnitudesLog[t][f], maxValue);
-              minValue = Math.min(stftMagnitudesLog[t][f], minValue);
-            }
-            loadingText.textContent = "Ready. Play the music.";
-            try { URL.revokeObjectURL(audio.src); }
-            catch(_) {}
-            const audioSrc = audio.src = URL.createObjectURL(input.files[0]);
-            const ctx = canvas.getContext("2d");
-            canvas.width = stftMagnitudesLog[0].length;
-            canvas.height = 255;
-            ctx.fillStyle = "black";
-            ctx.fillRect(0, 0, canvas.width, 255);
-          } catch(e) {
-            alert(e);
+          if (!input.files.length) return;
+          loadingText.textContent = "Loading the data...";
+          const data = await getRawDataOfMusic(sampleRate, input.files[0].arrayBuffer());
+          loadingText.textContent = "Analysing the data...";
+          stftMagnitudesLog = await fft(data);
+          maxValue = -Infinity, minValue = +Infinity;
+          for (let t = 0; t < stftMagnitudesLog.length; t++)
+          for (let f = 0; f < stftMagnitudesLog[0].length; f++) {
+            maxValue = Math.max(stftMagnitudesLog[t][f], maxValue);
+            minValue = Math.min(stftMagnitudesLog[t][f], minValue);
           }
+          loadingText.textContent = "Ready. Play the music.";
+          try { URL.revokeObjectURL(audio.src); }
+          catch(_) {}
+          const audioSrc = audio.src = URL.createObjectURL(input.files[0]);
+          const ctx = canvas.getContext("2d");
+          canvas.width = stftMagnitudesLog[0].length;
+          canvas.height = 255;
+          ctx.fillStyle = "black";
+          ctx.fillRect(0, 0, canvas.width, 255);
         });
       }();
     } while(0);

@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-
     <title>FFT</title>
   </head>
   <body style="background-color: gray;">
@@ -73,6 +72,7 @@
         loadingText.textContent = "input your audio data...";
 
         const canvas = document.createElement("canvas");
+        canvas.style.maxWidth = "100%";
         document.body.append(canvas);
 
         document.body.append(document.createElement("br"));

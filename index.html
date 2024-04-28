@@ -65,6 +65,7 @@
 
         const input = document.createElement("input");
         input.type = "file";
+        input.setAttribute("accept", "audio/*");
         document.body.append(input);
 
         const loadingText = document.createElement("div");
@@ -83,16 +84,24 @@
 
         let stftMagnitudesLog = [];
         let maxValue = -Infinity, minValue = +Infinity;
+        let seeked = false;
 
         ~async function drawingLoop() {
           for (;;) {
-            const t = (audio.currentTime / audioStepSize * sampleRate) >>> 0;
-            if (!audio.paused && t < stftMagnitudesLog.length) {
-              drawFFTOnCanvas(canvas, stftMagnitudesLog[t], maxValue, minValue);
+            if ((!audio.paused) || seeked) {
+              seeked = false;
+              const t = (audio.currentTime / audioStepSize * sampleRate) >>> 0;
+              if (t < stftMagnitudesLog.length) {
+                drawFFTOnCanvas(canvas, stftMagnitudesLog[t], maxValue, minValue);
+              }
             }
             await new Promise(requestAnimationFrame);
           }
         }();
+
+        audio.addEventListener("seeked", () => {
+          seeked = true;
+        });
 
         input.addEventListener("input", async e => {
           if (!input.files.length) return;

@@ -34,23 +34,45 @@
 
       const windowLoadingPromise = new Promise(r => window.addEventListener("load", () => r()));
 
-      function drawFFTOnCanvas(canvas, stftMagnitudesLog, maxValue, minValue) {
+      function drawFFTOnCanvas(canvas, stftMagnitudesLog, maxValue, cursorX) {
+        maxValue = Math.log(maxValue + 0.05);
+        const minValue = Math.log(0 + 0.05);
         const ctx = canvas.getContext("2d");
-        const imageData = ctx.createImageData(stftMagnitudesLog.length, 512);
+        const imageData = ctx.createImageData(stftMagnitudesLog.length, 256);
         const { data, width, height } = imageData;
-        for (let i = 0; i < data.length; i += 4) {
-          const x = (i / 4) % width;
-          const y = height - ((i / 4 / width) >>> 0);
-          if (y < (stftMagnitudesLog[x] - minValue) / (maxValue - minValue) * 512) {
-            data[i + 0] = 255;  // R value
-            data[i + 1] = 255;  // G value
-            data[i + 2] = 0;    // B value
-            data[i + 3] = 255;  // A value
+        for (let x = 0; x < width; x++) {
+          const v = 256 * (Math.log(stftMagnitudesLog[x] + 0.05) - minValue) / (maxValue - minValue);
+          let y;
+          if (cursorX === x) {
+            for (y = 0; y < v; y++) {
+              const i = 4 * ((height - y) * width + x);
+              data[i + 0] = 255;  // R value
+              data[i + 1] = 0;    // G value
+              data[i + 2] = 255;  // G value
+              data[i + 3] = 255;  // A value
+            }
+            for (; y < height; y++) {
+              const i = 4 * ((height - y) * width + x);
+              data[i + 0] = 255;  // R value
+              data[i + 1] = 0;    // G value
+              data[i + 2] = 0;    // B value
+              data[i + 3] = 255;  // A value
+            }
           } else {
-            data[i + 0] = 0;    // R value
-            data[i + 1] = 0;    // G value
-            data[i + 2] = 0;    // B value
-            data[i + 3] = 255;  // A value
+            for (y = 0; y < v; y++) {
+              const i = 4 * ((height - y) * width + x);
+              data[i + 0] = 255;  // R value
+              data[i + 1] = 255;  // G value
+              data[i + 2] = 0;    // G value
+              data[i + 3] = 255;  // A value
+            }
+            for (; y < height; y++) {
+              const i = 4 * ((height - y) * width + x);
+              data[i + 0] = 0;    // R value
+              data[i + 1] = 0;    // G value
+              data[i + 2] = 0;    // B value
+              data[i + 3] = 255;  // A value
+            }
           }
         }
 
@@ -73,8 +95,10 @@
         loadingText.textContent = "input your audio data...";
 
         const canvas = document.createElement("canvas");
-        canvas.style.maxWidth = "100%";
         document.body.append(canvas);
+
+        const strength = document.createElement("div");
+        document.body.append(strength);
 
         document.body.append(document.createElement("br"));
 
@@ -83,17 +107,15 @@
         audio.controls = true;
 
         let stftMagnitudesLog = [];
-        let maxValue = -Infinity, minValue = +Infinity;
+        let maxValue = -Infinity;
         let seeked = false;
 
         ~async function drawingLoop() {
           for (;;) {
-            if ((!audio.paused) || seeked) {
-              seeked = false;
-              const t = (audio.currentTime / audioStepSize * sampleRate) >>> 0;
-              if (t < stftMagnitudesLog.length) {
-                drawFFTOnCanvas(canvas, stftMagnitudesLog[t], maxValue, minValue);
-              }
+            const t = (audio.currentTime / audioStepSize * sampleRate) >>> 0;
+            if (t < stftMagnitudesLog.length) {
+              drawFFTOnCanvas(canvas, stftMagnitudesLog[t], maxValue, cursorX);
+              strength.textContent = Math.round(30 * stftMagnitudesLog[t][cursorX]);
             }
             await new Promise(requestAnimationFrame);
           }
@@ -103,17 +125,22 @@
           seeked = true;
         });
 
+        let cursorX = 0;
+        const canvasX = canvas.getBoundingClientRect().x;
+        document.addEventListener("mousemove", e => {
+          cursorX = e.clientX - canvasX;
+        });
+
         input.addEventListener("input", async e => {
           if (!input.files.length) return;
           loadingText.textContent = "Loading the data...";
           const data = await getRawDataOfMusic(sampleRate, await input.files[0].arrayBuffer());
           loadingText.textContent = "Analysing the data...";
           stftMagnitudesLog = await fft(audioStepSize, data);
-          maxValue = -Infinity, minValue = +Infinity;
+          maxValue = -Infinity;
           for (let t = 0; t < stftMagnitudesLog.length; t++)
           for (let f = 0; f < stftMagnitudesLog[0].length; f++) {
             maxValue = Math.max(stftMagnitudesLog[t][f], maxValue);
-            minValue = Math.min(stftMagnitudesLog[t][f], minValue);
           }
           loadingText.textContent = "Ready. Play the music.";
           try { URL.revokeObjectURL(audio.src); }
@@ -121,9 +148,9 @@
           const audioSrc = audio.src = URL.createObjectURL(input.files[0]);
           const ctx = canvas.getContext("2d");
           canvas.width = stftMagnitudesLog[0].length;
-          canvas.height = 512;
+          canvas.height = 256;
           ctx.fillStyle = "black";
-          ctx.fillRect(0, 0, canvas.width, 512);
+          ctx.fillRect(0, 0, canvas.width, 256);
         });
       }();
     } while(0);

@@ -36,12 +36,12 @@
 
       function drawFFTOnCanvas(canvas, stftMagnitudesLog, maxValue, minValue) {
         const ctx = canvas.getContext("2d");
-        const imageData = ctx.createImageData(stftMagnitudesLog.length, 255);
+        const imageData = ctx.createImageData(stftMagnitudesLog.length, 512);
         const { data, width, height } = imageData;
         for (let i = 0; i < data.length; i += 4) {
           const x = (i / 4) % width;
           const y = height - ((i / 4 / width) >>> 0);
-          if (y < (stftMagnitudesLog[x] - minValue) / (maxValue - minValue) * 255) {
+          if (y < (stftMagnitudesLog[x] - minValue) / (maxValue - minValue) * 512) {
             data[i + 0] = 255;  // R value
             data[i + 1] = 255;  // G value
             data[i + 2] = 0;    // B value
@@ -121,9 +121,9 @@
           const audioSrc = audio.src = URL.createObjectURL(input.files[0]);
           const ctx = canvas.getContext("2d");
           canvas.width = stftMagnitudesLog[0].length;
-          canvas.height = 255;
+          canvas.height = 512;
           ctx.fillStyle = "black";
-          ctx.fillRect(0, 0, canvas.width, 255);
+          ctx.fillRect(0, 0, canvas.width, 512);
         });
       }();
     } while(0);

@@ -127,7 +127,7 @@
 
         let cursorX = 0;
         document.addEventListener("mousemove", e => {
-          const { canvasClientX, canvasClientWidth } = canvas.getBoundingClientRect();
+          const { x: canvasClientX, width: canvasClientWidth } = canvas.getBoundingClientRect();
           const touchX = (e.clientX - canvasClientX) * (canvasClientWidth / canvas.width);
           cursorX = Math.round(touchX);
         });

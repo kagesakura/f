@@ -126,9 +126,8 @@
         });
 
         let cursorX = 0;
-        const canvasX = canvas.getBoundingClientRect().x;
         document.addEventListener("mousemove", e => {
-          cursorX = e.clientX - canvasX;
+          cursorX = e.screenX - canvas.getBoundingClientRect().x;
         });
 
         input.addEventListener("input", async e => {

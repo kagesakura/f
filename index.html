@@ -34,14 +34,14 @@
 
       const windowLoadingPromise = new Promise(r => window.addEventListener("load", () => r()));
 
-      function drawFFTOnCanvas(canvas, stftMagnitudesLog, maxValue, cursorX) {
+      function drawFFTOnCanvas(canvas, stftMagnitudes, maxValue, cursorX) {
         maxValue = Math.log(maxValue + 0.05);
         const minValue = Math.log(0 + 0.05);
         const ctx = canvas.getContext("2d");
-        const imageData = ctx.createImageData(stftMagnitudesLog.length, 256);
+        const imageData = ctx.createImageData(stftMagnitudes.length, 256);
         const { data, width, height } = imageData;
         for (let x = 0; x < width; x++) {
-          const v = 256 * (Math.log(stftMagnitudesLog[x] + 0.05) - minValue) / (maxValue - minValue);
+          const v = 256 * (Math.log(stftMagnitudes[x] + 0.05) - minValue) / (maxValue - minValue);
           let y;
           if (cursorX === x) {
             for (y = 0; y < v; y++) {
@@ -100,22 +100,76 @@
         const strength = document.createElement("div");
         document.body.append(strength);
 
-        document.body.append(document.createElement("br"));
+        const audioControlsWrapper = document.createElement("div");
+        document.body.append(audioControlsWrapper);
 
         const audio = new Audio();
-        document.body.append(audio);
+        audioControlsWrapper.append(audio);
         audio.controls = true;
 
-        let stftMagnitudesLog = [];
+        const audioVolumeWrapper = document.createElement("div");
+        document.body.append(audioVolumeWrapper);
+
+        const audioVolumePrefix = document.createElement("span");
+        audioVolumePrefix.textContent = "volume:";
+        audioVolumeWrapper.append(audioVolumePrefix);
+
+        const audioVolumeInput = document.createElement("input");
+        audioVolumeInput.style.outline = "none";
+        audioVolumeWrapper.append(audioVolumeInput);
+
+        audio.addEventListener("volumechange", () => {
+          audioVolumeInput.value = audio.volume;
+          audioVolumeInput.style.border = "";
+        });
+
+        audioVolumeInput.addEventListener("input", () => {
+          const val = +audioVolumeInput.value;
+          audioVolumeInput.style.border =
+            (/^(1|0\.\d*)$/.exec(audioVolumeInput.value) && val >= 0 && 1 >= val) ?
+              "" :
+              "red solid 1px";
+        });
+
+        audioVolumeInput.addEventListener("change", () => {
+          if (!/^(1|0\.\d*)$/.exec(audioVolumeInput.value)) return;
+          const val = +audioVolumeInput.value;
+          if (val >= 0 && 1 >= val) audio.volume = val;
+        });
+
+        const { round } = Math;
+        audioVolumeInput.addEventListener("keydown", e => {
+          switch (e.key) {
+            case "ArrowUp":
+            case "k":
+            case "w": {
+              const val = round(10000 * audioVolumeInput.value) / 10000;
+              const newVal = round(10000 * (val + 0.01)) / 10000;
+              e.preventDefault();
+              if (newVal >= 0 && 1 >= newVal) audio.volume = audioVolumeInput.value = newVal;
+              break;
+            }
+            case "ArrowDown":
+            case "j":
+            case "s": {
+              const val = round(10000 * audioVolumeInput.value) / 10000;
+              const newVal = round(10000 * (val - 0.01)) / 10000;
+              e.preventDefault();
+              if (newVal >= 0 && 1 >= newVal) audio.volume = audioVolumeInput.value = newVal;
+            }
+          }
+        });
+
+        let stftMagnitudes = [];
         let maxValue = -Infinity;
         let seeked = false;
 
         ~async function drawingLoop() {
           for (;;) {
             const t = (audio.currentTime / audioStepSize * sampleRate) >>> 0;
-            if (t < stftMagnitudesLog.length) {
-              drawFFTOnCanvas(canvas, stftMagnitudesLog[t], maxValue, cursorX);
-              strength.textContent = Math.round(30 * stftMagnitudesLog[t][cursorX]);
+            if (t < stftMagnitudes.length) {
+              drawFFTOnCanvas(canvas, stftMagnitudes[t], maxValue, cursorX);
+              strength.textContent = Math.round(30 * stftMagnitudes[t][cursorX]);
             }
             await new Promise(requestAnimationFrame);
           }
@@ -137,18 +191,18 @@
           loadingText.textContent = "Loading the data...";
           const data = await getRawDataOfMusic(sampleRate, await input.files[0].arrayBuffer());
           loadingText.textContent = "Analysing the data...";
-          stftMagnitudesLog = await fft(audioStepSize, data);
+          stftMagnitudes = await fft(audioStepSize, data);
           maxValue = -Infinity;
-          for (let t = 0; t < stftMagnitudesLog.length; t++)
-          for (let f = 0; f < stftMagnitudesLog[0].length; f++) {
-            maxValue = Math.max(stftMagnitudesLog[t][f], maxValue);
+          for (let t = 0; t < stftMagnitudes.length; t++)
+          for (let f = 0; f < stftMagnitudes[0].length; f++) {
+            maxValue = Math.max(stftMagnitudes[t][f], maxValue);
           }
           loadingText.textContent = "Ready. Play the music.";
           try { URL.revokeObjectURL(audio.src); }
           catch(_) {}
           const audioSrc = audio.src = URL.createObjectURL(input.files[0]);
           const ctx = canvas.getContext("2d");
-          canvas.width = stftMagnitudesLog[0].length;
+          canvas.width = stftMagnitudes[0].length;
           canvas.height = 256;
           ctx.fillStyle = "black";
           ctx.fillRect(0, 0, canvas.width, 256);

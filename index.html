@@ -215,13 +215,20 @@
         b.textContent = "Drop it here";
         dropPrompt.append(b);
 
+        let dragEndTimeout = null;
         document.addEventListener("dragenter", e => {
           dropPrompt.style.display = "";
           e.preventDefault();
+          if (dragEndTimeout !== null) {
+            clearTimeout(dragEndTimeout);
+            dragEndTimeout = null;
+          }
         });
 
         document.addEventListener("dragleave", () => {
-          dropPrompt.style.display = "none";
+          if (dragEndTimeout === null) dragEndTimeout = setTimeout(() => {
+            dropPrompt.style.display = "none";
+          }, 500);
         });
 
         document.addEventListener("dragover", e => {

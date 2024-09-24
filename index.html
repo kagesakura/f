@@ -215,22 +215,24 @@
         b.textContent = "Drop it here";
         dropPrompt.append(b);
 
-        let enteringCount = 0;
-        document.addEventListener("dragenter", e => {
+        let dragging = false;
+        document.addEventListener("dragenter", async e => {
           e.preventDefault();
-          if (enteringCount === 0) {
+          if (dragging) return;
+          dragging = true;
+          try {
             dropPrompt.style.display = "";
-          }
-          enteringCount++;
-        });
-
-        document.addEventListener("dragleave", () => {
-          enteringCount--;
-          setTimeout(() => {
-            if (enteringCount === 0) {
-              dropPrompt.style.display = "none";
+            for (;;) {
+              const result = await Promise.race([
+                new Promise(r => setTimeout(() => r("timeout"), 1)),
+                new Promise(r => document.addEventListener("dragover", () => r("dragover"), { once: true }))
+              ]);
+              if (result === "timeout") break;
             }
-          }, 1);
+          } finally {
+            dropPrompt.style.display = "none";
+            dragging = false;
+          }
         });
 
         document.addEventListener("dragover", e => {

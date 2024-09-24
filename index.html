@@ -224,7 +224,7 @@
             dropPrompt.style.display = "";
             for (;;) {
               const result = await Promise.race([
-                new Promise(r => setTimeout(() => r("timeout"), 1)),
+                new Promise(r => setTimeout(() => r("timeout"), 100)),
                 new Promise(r => document.addEventListener("dragover", () => r("dragover"), { once: true }))
               ]);
               if (result === "timeout") break;

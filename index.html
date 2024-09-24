@@ -186,26 +186,44 @@
           cursorX = Math.round(touchX);
         });
 
-        input.addEventListener("input", async e => {
-          if (!input.files.length) return;
+        async function processFile(file) {
           loadingText.textContent = "Loading the data...";
-          const data = await getRawDataOfMusic(sampleRate, await input.files[0].arrayBuffer());
+          const data = await getRawDataOfMusic(sampleRate, await file.arrayBuffer());
           loadingText.textContent = "Analysing the data...";
           stftMagnitudes = await fft(audioStepSize, data);
           maxValue = -Infinity;
           for (let t = 0; t < stftMagnitudes.length; t++)
-          for (let f = 0; f < stftMagnitudes[0].length; f++) {
-            maxValue = Math.max(stftMagnitudes[t][f], maxValue);
-          }
+            for (let f = 0; f < stftMagnitudes[0].length; f++) {
+              maxValue = Math.max(stftMagnitudes[t][f], maxValue);
+            }
           loadingText.textContent = "Ready. Play the music.";
           try { URL.revokeObjectURL(audio.src); }
           catch(_) {}
-          const audioSrc = audio.src = URL.createObjectURL(input.files[0]);
+          const audioSrc = audio.src = URL.createObjectURL(file);
           const ctx = canvas.getContext("2d");
           canvas.width = stftMagnitudes[0].length;
           canvas.height = 256;
           ctx.fillStyle = "black";
           ctx.fillRect(0, 0, canvas.width, 256);
+        }
+
+        document.documentElement.addEventListener("dragenter", (event) => {
+          event.preventDefault();
+        });
+
+        document.documentElement.addEventListener("dragover", (event) => {
+          event.preventDefault();
+        });
+
+        document.documentElement.addEventListener("drop", (event) => {
+          event.preventDefault();
+          if (!event.dataTransfer.files.length) return;
+          processFile(event.dataTransfer.files[0]);
+        });
+
+        input.addEventListener("input", async e => {
+          if (!input.files.length) return;
+          processFile(input.files[0]);
         });
       }();
     } while(0);

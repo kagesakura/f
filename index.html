@@ -215,20 +215,20 @@
         b.textContent = "Drop it here";
         dropPrompt.append(b);
 
-        document.documentElement.addEventListener("dragenter", e => {
+        document.addEventListener("dragenter", e => {
           dropPrompt.style.display = "";
           e.preventDefault();
         });
 
-        document.documentElement.addEventListener("dragleave", () => {
+        document.addEventListener("dragleave", () => {
           dropPrompt.style.display = "none";
         });
 
-        document.documentElement.addEventListener("dragover", e => {
+        document.addEventListener("dragover", e => {
           e.preventDefault();
         });
 
-        document.documentElement.addEventListener("drop", e => {
+        document.addEventListener("drop", e => {
           e.preventDefault();
           if (!e.dataTransfer.files.length) return;
           processFile(e.dataTransfer.files[0]);

@@ -31,6 +31,6 @@ const promiseOfFFT = pffft_simd().then(Module => (audioBuffer, audioStepSize, au
 });
 
 self.addEventListener("message", async e => {
-  const { id, audioStepSize, data } = e.data;
-  self.postMessage({ id, data: (await promiseOfFFT)(data, audioStepSize) });
+  const { id, audioStepSize, data, audioBlockSize } = e.data;
+  self.postMessage({ id, data: (await promiseOfFFT)(data, audioStepSize, audioBlockSize) });
 });

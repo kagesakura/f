@@ -1,9 +1,8 @@
 importScripts("./pffft.simd.js");
 
-const audioBlockSize = 1024;
 const bytesPerElement = 4;
 
-const promiseOfFFT = pffft_simd().then(Module => (audioBuffer, audioStepSize) => {
+const promiseOfFFT = pffft_simd().then(Module => (audioBuffer, audioStepSize, audioBlockSize) => {
   const audioSamples = new Float32Array(audioBuffer[0].length);
   for (let i = 0; i < audioSamples.length; i++) {
     let sum = 0;

@@ -12,9 +12,9 @@
       const fft = (() => {
         const fftWorker = new Worker("./worker.js");
         let count = 0;
-        return (audioStepSize, data) => {
+        return (audioStepSize, audioBlockSize, data) => {
           const myId = count++;
-          fftWorker.postMessage({ id: myId, audioStepSize, data });
+          fftWorker.postMessage({ id: myId, audioStepSize, data, audioBlockSize });
           return new Promise(r => {
             const handler = (e) => {
               const { id, data } = e.data;
@@ -193,7 +193,7 @@
           loadingText.textContent = "Loading the data...";
           const data = await getRawDataOfMusic(sampleRate, await file.arrayBuffer());
           loadingText.textContent = "Analysing the data...";
-          stftMagnitudes = await fft(audioStepSize, data);
+          stftMagnitudes = await fft(audioStepSize, audioBlockSize, data);
           maxValue = -Infinity;
           for (let t = 0; t < stftMagnitudes.length; t++)
             for (let f = 0; f < stftMagnitudes[0].length; f++) {

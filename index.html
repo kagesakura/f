@@ -35,7 +35,7 @@
 
       const windowLoadingPromise = new Promise(r => window.addEventListener("load", () => r()));
 
-      function drawFFTOnCanvas(canvas, stftMagnitudes, maxValue, cursorX) {
+      function drawFFTOnCanvas(canvas, stftMagnitudes, maxValue, cursorX, imageHeight) {
         maxValue = Math.log(maxValue + 0.05);
         const minValue = Math.log(0 + 0.05);
         const ctx = canvas.getContext("2d");
@@ -171,7 +171,7 @@
           for (;;) {
             const t = (audio.currentTime / audioStepSize * sampleRate) >>> 0;
             if (t < stftMagnitudes.length) {
-              drawFFTOnCanvas(canvas, stftMagnitudes[t], maxValue, cursorX);
+              drawFFTOnCanvas(canvas, stftMagnitudes[t], maxValue, cursorX. imageHeight);
               strength.textContent = `(${cursorX * (sampleRate / audioBlockSize)}, ${Math.round(30 * stftMagnitudes[t][cursorX])})`;
             }
             await new Promise(requestAnimationFrame);

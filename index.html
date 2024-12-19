@@ -173,7 +173,7 @@
             const t = (audio.currentTime / audioStepSize * sampleRate) >>> 0;
             if (t < stftMagnitudes.length) {
               drawFFTOnCanvas(canvas, stftMagnitudes[t], maxValue, cursorX, imageHeight);
-              strength.textContent = `(${cursorX * (sampleRate / audioBlockSize)}, ${Math.round(30 * stftMagnitudes[t][cursorX])})`;
+              strength.textContent = `(${cursorX * (sampleRate / audioBlockSize)}, ${Math.round(100 * stftMagnitudes[t][cursorX]) / 100})`;
             }
             await new Promise(requestAnimationFrame);
           }

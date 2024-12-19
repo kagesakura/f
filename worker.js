@@ -22,7 +22,7 @@ const promiseOfFFT = pffft_simd().then(Module => (audioBuffer, audioStepSize, au
     dataHeap.set(new Uint8Array(audioBlock.buffer));
     Module._pffft_runner_transform_magnitudes(pffftRunner, dataHeap.byteOffset);
     const fftResult = new Float32Array(dataHeap.buffer, dataHeap.byteOffset, audioBlockSize / 2);
-    const magnitudes = fftResult.map(v => v);
+    const magnitudes = fftResult.map(v => Math.sqrt(Math.abs(v)));
     stftMagnitudes.push(magnitudes);
   }
   Module._free(dataPtr);

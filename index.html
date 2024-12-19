@@ -36,13 +36,14 @@
       const windowLoadingPromise = new Promise(r => window.addEventListener("load", () => r()));
 
       function drawFFTOnCanvas(canvas, stftMagnitudes, maxValue, cursorX, imageHeight) {
-        maxValue = Math.log(maxValue + 0.05);
-        const minValue = Math.log(0 + 0.05);
+        // maxValue = Math.log(maxValue + 0.05);
+        const minValue = 0; // Math.log(0 + 0.05);
         const ctx = canvas.getContext("2d");
         const imageData = ctx.createImageData(stftMagnitudes.length, imageHeight);
         const { data, width, height } = imageData;
         for (let x = 0; x < width; x++) {
-          const v = imageHeight * (Math.log(stftMagnitudes[x] + 0.05) - minValue) / (maxValue - minValue);
+          const v = imageHeight * (stftMagnitudes[x] - minValue) / (maxValue - minValue);
+          // const v = imageHeight * (Math.log(stftMagnitudes[x] + 0.05) - minValue) / (maxValue - minValue);
           let y;
           if (cursorX === x) {
             for (y = 0; y < v; y++) {

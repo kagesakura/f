@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -41,10 +41,9 @@
       const windowLoadingPromise = new Promise(r => window.addEventListener("load", () => r()));
 
       function drawFFTOnCanvas(canvas, stftMagnitudes, maxValue, cursorX, imageHeight) {
-        const proc = x => 10 * Math.log10((x ** 2) / (sampleRate / audioBlockSize));
+        const proc = x => 10 * Math.log10(x ** 2);
         maxValue = proc(maxValue);
-        const minValue = proc(0.01);
-        const zero = Math.round(imageHeight * (0 - minValue) / (maxValue - minValue));
+        const minValue = proc(0.0002);
         const ctx = canvas.getContext("2d");
         const imageData = ctx.createImageData(stftMagnitudes.length, imageHeight);
         const { data, width, height } = imageData;
@@ -82,13 +81,6 @@
               data[i + 3] = 255;  // A value
             }
           }
-          if (-1 < zero && zero < height) {
-            const i = 4 * ((height - zero) * width + x);
-            data[i + 0] = 255;  // R value
-            data[i + 1] = 255;  // G value
-            data[i + 2] = 255;  // B value
-            data[i + 3] = 255;  // A value
-          }
         }
         ctx.putImageData(imageData, 0, 0);
       }
@@ -118,6 +110,7 @@
         const audio = new Audio();
         audioControlsWrapper.append(audio);
         audio.controls = true;
+        audio.volume = 0.09;
 
         const audioVolumeWrapper = document.createElement("div");
         document.body.append(audioVolumeWrapper);
@@ -178,10 +171,10 @@
 
         ~async function drawingLoop() {
           for (;;) {
-            const t = (audio.currentTime / audioStepSize * sampleRate) >>> 0;
-            if (t < stftMagnitudes.length) {
+            if (stftMagnitudes.length) {
+              const t = Math.min((audio.currentTime / audioStepSize * sampleRate) >>> 0, stftMagnitudes.length - 1);
               drawFFTOnCanvas(canvas, stftMagnitudes[t], maxValue, cursorX, imageHeight);
-              strength.textContent = `(${cursorX * (sampleRate / audioBlockSize)}, ${Math.round(100 * stftMagnitudes[t][cursorX]) / 100})`;
+              strength.textContent = `(${cursorX * (sampleRate / audioBlockSize)}, ${Math.round(10000 * stftMagnitudes[t][cursorX]) / 100})`;
             }
             await new Promise(requestAnimationFrame);
           }

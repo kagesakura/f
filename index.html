@@ -82,14 +82,14 @@
               data[i + 3] = 255;  // A value
             }
           }
+          if (-1 < zero && zero < height) {
+            const i = 4 * ((height - zero) * width + x);
+            data[i + 0] = 255;  // R value
+            data[i + 1] = 255;  // G value
+            data[i + 2] = 255;  // B value
+            data[i + 3] = 255;  // A value
+          }
         }
-        do {
-          const i = 4 * ((height - zero) * width + x);
-          data[i + 0] = 255;  // R value
-          data[i + 1] = 255;  // G value
-          data[i + 2] = 255;  // B value
-          data[i + 3] = 255;  // A value
-        } while(0);
         ctx.putImageData(imageData, 0, 0);
       }
 

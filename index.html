@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>FFT</title>
+  </head>
+
+  <body style="background-color: gray;">
+    <script type="text/javascript">
+    do {
+      const sampleRate = 16384;
+      const audioStepSize = 256;
+      const audioBlockSize = 2048;
+      const imageHeight = 512;
+
+      const fft = (() => {
+        const fftWorker = new Worker("./worker.js");
+        let count = 0;
+        return (audioStepSize, audioBlockSize, data) => {
+          const myId = count++;
+          fftWorker.postMessage({ id: myId, audioStepSize, data, audioBlockSize });
+          return new Promise(r => {
+            const handler = (e) => {
+              const { id, data } = e.data;
+              if (id !== myId) return;
+              fftWorker.removeEventListener("message", handler);
+              r(data);
+            };
+            fftWorker.addEventListener("message", handler);
+          })
+        };
+      })();
+
+      async function getRawDataOfMusic(sampleRate, data) {
+        const audioContext = new AudioContext({ sampleRate });
+        const audioBuffer = await audioContext.decodeAudioData(data);
+        return Array.from({ length: audioBuffer.numberOfChannels }, (_, i) => audioBuffer.getChannelData(i));
+      }
+
+      const windowLoadingPromise = new Promise(r => window.addEventListener("load", () => r()));
+
+      function drawFFTOnCanvas(canvas, stftMagnitudes, maxValue, cursorX, imageHeight) {
+        const proc = x => 10 * Math.log10(x ** 2);
+        maxValue = proc(maxValue);
+        const minValue = proc(0.0002);
+        const ctx = canvas.getContext("2d");
+        const imageData = ctx.createImageData(stftMagnitudes.length, imageHeight);
+        const { data, width, height } = imageData;
+        for (let x = 0; x < width; x++) {
+          const v = imageHeight * (proc(stftMagnitudes[x]) - minValue) / (maxValue - minValue);
+          let y;
+          if (cursorX === x) {
+            for (y = 0; y < v; y++) {
+              const i = 4 * ((height - y) * width + x);
+              data[i + 0] = 255;  // R value
+              data[i + 1] = 0;    // G value
+              data[i + 2] = 255;  // G value
+              data[i + 3] = 255;  // A value
+            }
+            for (; y < height; y++) {
+              const i = 4 * ((height - y) * width + x);
+              data[i + 0] = 255;  // R value
+              data[i + 1] = 0;    // G value
+              data[i + 2] = 0;    // B value
+              data[i + 3] = 255;  // A value
+            }
+          } else {
+            for (y = 0; y < v; y++) {
+              const i = 4 * ((height - y) * width + x);
+              data[i + 0] = 255;  // R value
+              data[i + 1] = 255;  // G value
+              data[i + 2] = 0;    // G value
+              data[i + 3] = 255;  // A value
+            }
+            for (; y < height; y++) {
+              const i = 4 * ((height - y) * width + x);
+              data[i + 0] = 0;    // R value
+              data[i + 1] = 0;    // G value
+              data[i + 2] = 0;    // B value
+              data[i + 3] = 255;  // A value
+            }
+          }
+        }
+        ctx.putImageData(imageData, 0, 0);
+      }
+
+      ~async function main() {
+        await windowLoadingPromise;
+
+        const input = document.createElement("input");
+        input.type = "file";
+        input.setAttribute("accept", "audio/aac,audio/midi,audio/x-midi,audio/mpeg,audio/ogg,audio/opus,audio/wav,audio/webm,audio/*");
+        document.body.append(input);
+
+        const loadingText = document.createElement("div");
+        document.body.append(loadingText);
+        loadingText.textContent = "input your audio data...";
+
+        const canvas = document.createElement("canvas");
+        canvas.style.maxWidth = "100%";
+        document.body.append(canvas);
+
+        const strength = document.createElement("div");
+        document.body.append(strength);
+
+        const audioControlsWrapper = document.createElement("div");
+        document.body.append(audioControlsWrapper);
+
+        const audio = new Audio();
+        audioControlsWrapper.append(audio);
+        audio.controls = true;
+        audio.volume = 0.09;
+
+        const audioVolumeWrapper = document.createElement("div");
+        document.body.append(audioVolumeWrapper);
+
+        const audioVolumePrefix = document.createElement("span");
+        audioVolumePrefix.textContent = "volume:";
+        audioVolumeWrapper.append(audioVolumePrefix);
+
+        const audioVolumeInput = document.createElement("input");
+        audioVolumeInput.style.outline = "none";
+        audioVolumeWrapper.append(audioVolumeInput);
+
+        audio.addEventListener("volumechange", () => {
+          audioVolumeInput.value = audio.volume;
+          audioVolumeInput.style.border = "";
+        });
+
+        audioVolumeInput.addEventListener("input", () => {
+          const val = +audioVolumeInput.value;
+          audioVolumeInput.style.border =
+            (/^(1|0\.\d*)$/.exec(audioVolumeInput.value) && val >= 0 && 1 >= val) ?
+              "" :
+              "red solid 1px";
+        });
+
+        audioVolumeInput.addEventListener("change", () => {
+          if (!/^(1|0\.\d*)$/.exec(audioVolumeInput.value)) return;
+          const val = +audioVolumeInput.value;
+          if (val >= 0 && 1 >= val) audio.volume = val;
+        });
+
+        const { round } = Math;
+        audioVolumeInput.addEventListener("keydown", e => {
+          switch (e.key) {
+            case "ArrowUp":
+            case "k":
+            case "w": {
+              const val = round(10000 * audioVolumeInput.value) / 10000;
+              const newVal = round(10000 * (val + 0.01)) / 10000;
+              e.preventDefault();
+              if (newVal >= 0 && 1 >= newVal) audio.volume = audioVolumeInput.value = newVal;
+              break;
+            }
+            case "ArrowDown":
+            case "j":
+            case "s": {
+              const val = round(10000 * audioVolumeInput.value) / 10000;
+              const newVal = round(10000 * (val - 0.01)) / 10000;
+              e.preventDefault();
+              if (newVal >= 0 && 1 >= newVal) audio.volume = audioVolumeInput.value = newVal;
+            }
+          }
+        });
+
+        let stftMagnitudes = [];
+        let maxValue = -Infinity;
+        let seeked = false;
+
+        ~async function drawingLoop() {
+          for (;;) {
+            if (stftMagnitudes.length) {
+              const t = Math.min((audio.currentTime / audioStepSize * sampleRate) >>> 0, stftMagnitudes.length - 1);
+              drawFFTOnCanvas(canvas, stftMagnitudes[t], maxValue, cursorX, imageHeight);
+              strength.textContent = `(${cursorX * (sampleRate / audioBlockSize)}, ${Math.round(10000 * stftMagnitudes[t][cursorX]) / 100})`;
+            }
+            await new Promise(requestAnimationFrame);
+          }
+        }();
+
+        audio.addEventListener("seeked", () => {
+          seeked = true;
+        });
+
+        let cursorX = 0;
+        document.addEventListener("mousemove", e => {
+          const { x: canvasClientX, width: canvasClientWidth } = canvas.getBoundingClientRect();
+          const touchX = (e.clientX - canvasClientX) * (canvas.width / canvasClientWidth);
+          cursorX = Math.round(touchX);
+        });
+
+        async function processFile(file) {
+          loadingText.textContent = "Loading the data...";
+          const data = await getRawDataOfMusic(sampleRate, await file.arrayBuffer());
+          loadingText.textContent = "Analysing the data...";
+          stftMagnitudes = await fft(audioStepSize, audioBlockSize, data);
+          maxValue = -Infinity;
+          for (let t = 0; t < stftMagnitudes.length; t++)
+            for (let f = 0; f < stftMagnitudes[0].length; f++) {
+              maxValue = Math.max(stftMagnitudes[t][f], maxValue);
+            }
+          loadingText.textContent = "Ready. Play the music.";
+          try { URL.revokeObjectURL(audio.src); }
+          catch(_) {}
+          const audioSrc = audio.src = URL.createObjectURL(file);
+          const ctx = canvas.getContext("2d");
+          canvas.width = stftMagnitudes[0].length;
+          canvas.height = imageHeight;
+          ctx.fillStyle = "black";
+          ctx.fillRect(0, 0, canvas.width, imageHeight);
+        }
+
+        const dropPrompt = document.createElement("div");
+        Object.assign(dropPrompt.style, {display:"none",width:"100vw",height:"100vh",opacity:"0.7",background:"#000",position:"fixed",top:"0px",left:"0px"});
+        document.body.append(dropPrompt);
+        const b = document.createElement("div");
+        Object.assign(b.style, {color:"#FFF",fontSize:"xxx-large",position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)"});
+        b.textContent = "Drop it here";
+        dropPrompt.append(b);
+
+        let dragging = false;
+        document.addEventListener("dragenter", async e => {
+          e.preventDefault();
+          if (dragging) return;
+          dragging = true;
+          try {
+            dropPrompt.style.display = "";
+            for (;;) {
+              const result = await Promise.race([
+                new Promise(r => setTimeout(() => r("timeout"), 100)),
+                new Promise(r => document.addEventListener("dragover", () => r("dragover"), { once: true }))
+              ]);
+              if (result === "timeout") break;
+            }
+          } finally {
+            dropPrompt.style.display = "none";
+            dragging = false;
+          }
+        });
+
+        document.addEventListener("dragover", e => {
+          e.preventDefault();
+        });
+
+        document.addEventListener("drop", e => {
+          e.preventDefault();
+          if (!e.dataTransfer.files.length) return;
+          processFile(e.dataTransfer.files[0]);
+        });
+
+        input.addEventListener("input", async e => {
+          if (!input.files.length) return;
+          processFile(input.files[0]);
+        });
+      }();
+    } while(0);
+    </script>
+  </body>
+</html>
